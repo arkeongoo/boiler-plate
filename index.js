@@ -2,9 +2,10 @@ const express = require("express");
 const app = express();
 const port = 5000;
 // const bodyParser = require("body-parser");
-const { User } = require("./models/User");
-const config = require("./config/key");
 const cookieParser = require("cookie-parser");
+const config = require("./config/key");
+const { User } = require("./models/User");
+const { auth } = require("./middleware/auth");
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -50,37 +51,34 @@ app.post("/api/users/login", async (req, res) => {
     //비밀번호까지 맞다면 토큰 생성
     const token = await user.generateToken();
     res
-      .cookie("x-auth", token)
+      .cookie("x_auth", token)
       .status(200)
       .json({ loginSuccess: true, userId: user._id });
   } catch (error) {
     return res.status(400).json({ loginSuccess: false, error: error.message });
   }
-  // User.findOne({ email: req.body.email }, (err, user) => {
-  //   if (!user) {
-  //     return res.json({
-  //       loginSuccess: false,
-  //       message: "The user does not exist.",
-  //     });
-  //   }
-  //
-  //   user.comparePassword(req.body.password, (err, isMatch) => {
-  //     if (!isMatch)
-  //       return res.json({
-  //         loginSuccess: false,
-  //         message: "Password is incorrect",
-  //       });
-  //
-  //     user.generateToken((err, user) => {
-  //       if (err) return res.status(400).send(err);
-  //       //토큰 저장 쿠키 or 로컬스토리지 and so on
-  //       res
-  //         .cookie("x-auth", user.token)
-  //         .status(200)
-  //         .json({ loginSuccess: true, userId: user._id });
-  //     });
-  //   });
-  // });
+});
+
+app.get("/api/users/auth", auth, (req, res) => {
+  //여기까지 미들웨어를 통과해 왔다는 얘기는 Authentication이 True임.
+  res.status(200).json({
+    _id: req.user._id,
+    isAdmin: req.user.role === 0 ? false : true,
+    isAuth: true,
+    email: req.user.email,
+    lastname: req.user.lastname,
+    role: req.user.role,
+    image: req.user.image,
+  });
+});
+
+app.get("/api/users/logout", auth, async (req, res) => {
+  try {
+    await User.findOneAndUpdate({ _id: req.user._id }, { token: "" });
+    return res.status(200).send({ success: true });
+  } catch (error) {
+    return res.json({ success: false, error });
+  }
 });
 
 app.listen(port, () => {

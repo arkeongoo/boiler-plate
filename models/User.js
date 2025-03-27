@@ -63,16 +63,27 @@ userSchema.methods.comparePassword = async function (plainPassword) {
 };
 userSchema.methods.generateToken = async function () {
   let user = this;
-  // //jsonwebtoken으로 token 생성하기
-
+  //jsonwebtoken으로 token 생성하기
+  // token === user._id + "secretToken"
+  // 위의 token을 디코드 시킬 때 "secretToken을 넣으면 user._id를 줌"
   let token = jwt.sign(user._id.toHexString(), "secretToken");
   user.token = token;
   await user.save();
   return token;
-  // user.save(function (err, user) {
-  //   if (err) return cb(err);
-  //   cb(null, user);
-  // });
+};
+
+userSchema.statics.findByToken = async function (token) {
+  let user = this;
+  try {
+    //토큰을 디코드함
+    const decoded = await jwt.verify(token, "secretToken");
+    //유저 아이디 이용해서 유저 찾은 다음
+    // 클라이언트에서 가져온 token과 DB에 보관된 token이 일치하는지 확인
+    let userInfo = await user.findOne({ _id: decoded, token: token });
+    return userInfo;
+  } catch (error) {
+    return null;
+  }
 };
 
 const User = mongoose.model("User", userSchema);
