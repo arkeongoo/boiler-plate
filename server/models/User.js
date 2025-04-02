@@ -61,20 +61,23 @@ userSchema.methods.comparePassword = async function (plainPassword) {
   //   cb(null, isMatch);
   // });
 };
-userSchema.methods.generateToken = async function () {
-  let user = this;
-  //jsonwebtoken으로 token 생성하기
-  // token === user._id + "secretToken"
-  // 위의 token을 디코드 시킬 때 "secretToken을 넣으면 user._id를 줌"
-  let token = jwt.sign(user._id.toHexString(), "secretToken");
-  user.token = token;
-  await user.save();
-  return token;
+userSchema.methods.generateToken = function () {
+  try {
+    let user = this;
+    //jsonwebtoken으로 token 생성하기
+    // token === user._id + "secretToken"
+    // 위의 token을 디코드 시킬 때 "secretToken을 넣으면 user._id를 줌"
+    let token = jwt.sign(user._id.toHexString(), "secretToken");
+    user.token = token;
+    return user.save();
+  } catch (error) {
+    throw new Error("Error generating token " + error.message);
+  }
 };
 
 userSchema.statics.findByToken = async function (token) {
-  let user = this;
   try {
+    let user = this;
     //토큰을 디코드함
     const decoded = await jwt.verify(token, "secretToken");
     //유저 아이디 이용해서 유저 찾은 다음
